@@ -1,5 +1,125 @@
 from copy import deepcopy
-from boardstate import *
+import time
+
+current_milli_time = lambda: int(round(time.time() * 1000))
+
+SPACE = ' '
+BLACK = 'B'
+WHITE = 'W'
+NEG_INF = -10000000000
+POS_INF = 10000000000
+
+class Boardstate:
+    '''A class with board, next_turn, is_game_over, and everything that
+    we need to know about current state'''
+
+    DEBUG_MODE = False
+    
+    def __init__(self, n, board=None, next_turn=None):
+        self.n = n
+        if board == None:
+            self.board = [[SPACE] * n for i in range(n)]
+            self.add_middle_pieces()
+        else:
+            self.board = board
+        self.next_turn = BLACK if next_turn = None else next_turn
+        self.is_game_over = False
+        self.winner = None
+        self.num_pieces = 4 # board's initialized with 4 pieces
+        self.last_turn_passed = False
+
+    def __init
+    def add_middle_pieces(self):
+        mid_x = (self.n - 1) // 2
+        mid_y = mid_x
+        self.board[mid_x][mid_y] = BLACK
+        self.board[mid_x][mid_y + 1] = WHITE
+        self.board[mid_x + 1][mid_y] = WHITE
+        self.board[mid_x + 1][mid_y + 1] = BLACK
+
+    def get_piece_count(self):
+        b = 0
+        w = 0
+        for r in self.board:
+            for c in r:
+                if c == BLACK: b += 1
+                elif c == WHITE: w += 1
+        return b, w
+
+    def update_winner(self):
+        b, w = self.get_piece_count()
+        if b > w:
+            self.winner = BLACK
+        elif w > b:
+            self.winner = WHITE
+        else:
+            self.winner = SPACE # draw
+        return
+    
+    def make_move(self, move):
+        if move == (-1, -1):
+            self.next_turn = BLACK if self.next_turn == WHITE else WHITE
+            if self.last_turn_passed:
+                self.is_game_over = True
+                self.update_winner()
+            else:
+                self.last_turn_passed = True
+        else:
+            self.board[move[0]][move[1]] = self.next_turn
+            self.next_turn = BLACK if self.next_turn == WHITE else WHITE
+            self.num_pieces += 1
+            self.last_turn_passed = False
+            if self.num_pieces == self.n * self.n:
+                self.is_game_over = True
+                self.update_winner()
+                
+    def __str__(self):
+        s = ""
+        if Boardstate.DEBUG_MODE:
+            s += "n: " + str(self.n) + '\n'
+            s += "next_turn: "
+            if self.next_turn == BLACK:
+                s += "Black"
+            else:
+                s += "White"
+            s += '\n'
+            s += "is_game_over: " + str(self.is_game_over) + '\n'
+            s += "winner: "
+            if self.winner == BLACK:
+                s += "Black"
+            elif self.winner == WHITE:
+                s += "White"
+            else:
+                s += "None"
+            s += '\n'
+        s += ' '
+        for i in range(self.n):
+            s += ' ' + str(i)
+        s += '\n'
+        s += ' '
+        for _ in range(self.n):
+            s += '--'
+        s += '-\n'
+        i = 0
+        for r in self.board:
+            s += str(i)
+            i += 1
+            for c in r:
+                s += '|'
+                if c == BLACK:
+                    s += 'B'
+                elif c == WHITE:
+                    s += 'W'
+                else:
+                    s += ' '
+            s += '|'
+            s += '\n'
+            s += ' '
+            for _ in range(self.n):
+                s += '--'
+            s += '-\n'
+        return s
+
 
 def copy_b_state(b_state):
     new_b_state = Boardstate(b_state.n)
@@ -14,7 +134,7 @@ def copy_b_state(b_state):
 
 def heuristics(b_state):
     b, w = b_state.get_piece_count()
-    return b - w
+        return b - w
 
 def minimax(b_state, depth_left, alpha, beta, maximizer):
     if depth_left == 0 or b_state.is_game_over:
@@ -62,12 +182,27 @@ def minimax(b_state, depth_left, alpha, beta, maximizer):
             return score, (-1, -1)
         return minimum, arg_min
     
-def AI(b_state, time):
+def get_move(board_size, board_state, turn, time_left, opponent_time_left):
+    start_time = current_milli_time
     maximizer = BLACK
-    max_depth = 5
-    for depth in range(1, max_depth + 1):
-        best_score, best_move = minimax(b_state, depth, NEG_INF, POS_INF, maximizer)
-    return [best_score, best_move]
+    max_depth = 4
+    best_score = NEG_INF if turn == BLACK else POS_INF
+    best_move = None
+    b_state = Boardstate(board_size, board_state, turn)
+    while current_milli_time - start_time < 4500:
+        c_b_state = copy_b_state(b_state) 
+        b_score, b_move = minimax(c_b_state, max_depth, NEG_INF, POS_INF, maximizer)
+        if turn == maximizer:
+            if b_score > best_score:
+                best_score = b_score
+                best_move = b_move
+        else:
+            if b_score < best_score:
+                best_score = b_score
+                best_move = b_move
+        
+    if best_move == (-1, -1): best_move = None
+    return best_move
 
 def outofbounds(n, r, c):
     return r < 0 or c < 0 or r >= n or c >=n
